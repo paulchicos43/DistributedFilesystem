@@ -35,7 +35,7 @@ typedef struct message {
 } message;
 
 typedef struct response {
-    int success; //
+    int succ; //
     char block[MFS_BLOCK_SIZE];
     MFS_Stat_t stats;
 } response;

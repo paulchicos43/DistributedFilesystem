@@ -22,9 +22,11 @@ int MFS_Lookup(int pinum, char *name) {
 	strcpy(msg.command, "LOOKUP");
 	msg.inum = pinum;
 	strcpy(msg.name, name);
+	printf("client:: msg.name: \"%s\", name: \"%s\"\n", msg.name, name);
+	printf("client:: Sending lookup cmd...\n");
 	Send_Message(&msg, &resp);
 
-	return 0;
+	return resp.succ;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m) {
@@ -105,11 +107,17 @@ int MFS_Shutdown() {
 
 // Helper method to send commands
 int Send_Message(message* msg, response* resp) {
-	int rc = UDP_Write(sd, &addrSnd, (char*) &msg, BUFFER_SIZE);
+	printf("client:: sending message...\n");
+	int rc = UDP_Write(sd, &addrSnd, (char*) msg, sizeof(struct message));
 	if (rc < 0) {
 		printf("client:: failed to send\n");
 		return -1;
 	}
-	UDP_Read(sd, &addrSnd, (char*) &resp, BUFFER_SIZE);
+	printf("client:: awaiting server response...\n");
+	char buffer[sizeof(struct response)];
+	UDP_Read(sd, &addrSnd, &buffer[0], sizeof(struct response));
+	printf("client:: response recieved!\n");
+	resp = (response*) buffer;
+	printf("response succes = %d\n", resp->succ);
 	return 0;
 }

@@ -27,6 +27,9 @@ int main(int argc, char *argv[]) {
     printf("client:: got reply [size:%d contents:(%s)\n", rc, message);*/
 
     MFS_Init("localhost", 10000);
+    int rc = MFS_Lookup(0, "whats up");
+    printf("client:: Lookup results: %d\n", rc);
+    
     return 0;
 }
 

@@ -4,23 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "udp.h"
+#include "mfs.h"
 
 #define BLOCK_SIZE 4096
 
 
 int initialized = 0;
 char *fileName;
-
-typedef struct inode {
-	int size;
-	int type; //0 for a file and 1 for a directory
-	int pointers[14];
-} inode;
-
-typedef struct __MFS_DirEnt_t {
-    char name[28];  // up to 28 bytes of name in directory (including \0)
-    int  inum;      // inode number of entry (-1 means entry not used)
-} MFS_DirEnt_t;
 
 typedef struct info {
 	int size;
@@ -95,18 +85,22 @@ int server_init(char *name) {
         return 0;
 }
 
-int MFS_Lookup(int pinum, char *name) {
-	inode *in = malloc(sizeof(inode));
-	server_read(in,pinum * sizeof(inode),sizeof(inode));
+int MFS_Lookup_loc(int pinum, char *name) {
+	struct inode *in = malloc(sizeof(struct inode));
+	server_read(in,pinum * sizeof(struct inode),sizeof(struct inode));
 	for(int i = 0; i < 14; i++) {
 		if(in->pointers[i] == 0) {
 			break;
 		}
 		MFS_DirEnt_t dir[128];
 		server_read(&dir,in->pointers[i],BLOCK_SIZE);
+		printf("server:: name is \"%s\"\n", name);
 		for(int j = 0; j < 128; j++) {
-			if(strcmp(dir[j].name,name) == 0) {
-				return dir[j].inum;
+			printf("server:: name at index %d is \"%s\"\n", j, dir[j].name);
+			if(strcmp(dir[j].name, name) == 0) {
+				int returninum = dir[j].inum;
+				printf("server:: returninum=%d\n", returninum);
+				return returninum;
 			}
 			if(dir[j].inum == -1) {
 				break;
@@ -116,7 +110,7 @@ int MFS_Lookup(int pinum, char *name) {
 	return -1;
 }
 
-int MFS_Write(int inum, char *buffer, int block) {
+int MFS_Write_loc(int inum, char *buffer, int block) {
 	inode *in = malloc(sizeof(inode));
 	server_read(in,inum * sizeof(inode),sizeof(inode));
 	if(in->pointers[block] == 0) {
@@ -133,7 +127,7 @@ int MFS_Write(int inum, char *buffer, int block) {
 	return 0;
 }
 
-int MFS_Read(int inum, char *buffer, int block) {
+int MFS_Read_loc(int inum, char *buffer, int block) {
 	inode *in = malloc(sizeof(inode));
 	server_read(in,inum * sizeof(inode),sizeof(inode));
 	server_read(buffer,in->pointers[block],BLOCK_SIZE);
@@ -141,7 +135,7 @@ int MFS_Read(int inum, char *buffer, int block) {
 	return 0;
 }
 
-int MFS_Creat(int pinum,int type, char *name) {
+int MFS_Creat_loc(int pinum,int type, char *name) {
 	Info *info = malloc(sizeof(Info));
 	server_read(info,-8,sizeof(Info));
 
@@ -170,7 +164,7 @@ int MFS_Creat(int pinum,int type, char *name) {
 }
 
 
-int MFS_Unlink(int pinum, char *name) {
+int MFS_Unlink_loc(int pinum, char *name) {
 	inode *in = malloc(sizeof(inode));
 	server_read(in,pinum * sizeof(inode),sizeof(inode));
 
@@ -195,19 +189,68 @@ int MFS_Unlink(int pinum, char *name) {
 
 int main(int argc, char *argv[]) {
 	/*server_init("storage");
-	int fn = MFS_Lookup(0,"testing");
+	int fn = MFS_Lookup_loc(0,"testing");
 	char buffer1[4096] = "whats up";
 
 	char buffer2[4096];
-	MFS_Write(fn,buffer1,2);
+	MFS_Write_loc(fn,buffer1,2);
 
-	MFS_Read(fn,buffer2,2);
+	MFS_Read_loc(fn,buffer2,2);
 
 	printf("%s\n",buffer2);*/
-    int sd = UDP_Open(10000);
+    if (argc != 3)
+    {
+        perror("server:: Invocation of server contains incorrect params\n");
+        return 0;
+    }
+
+    int sd = UDP_Open(atoi(argv[1]));
+    printf("server:: file_image: %s\n", argv[2]);
+    server_init(argv[2]);
     assert(sd > -1);
+    printf("server:: Server initialized!\n");
     while (1) {
-        struct sockaddr_in addr;
+	    struct sockaddr_in addr;
+	    struct message* msg;
+	    char buffer[sizeof(struct message)];
+	    printf("server:: waiting...\n");
+	    int rc = UDP_Read(sd, &addr, &buffer[0], sizeof(struct message));
+	    printf("server:: message recieved!\n");
+	    if (rc > 0) {
+	        msg = (message*) buffer;
+	        printf("server:: read command: %s\n", msg->command);
+		if (strcmp(msg->command, "LOOKUP") == 0) {
+		    printf("server:: start of LOOKUP...\n");
+		    int succ = MFS_Lookup_loc(msg->inum, msg->name);
+		    printf("server:: end of LOOKUP...\n");
+		    struct response* resp;
+		    resp->succ = succ;
+		    printf("server:: starting to send reply\n");
+		    rc = UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+		    printf("server:: LOOKUP replay sent\n");
+		}
+		else if (strcmp(msg->command, "STAT") == 0) {
+		
+		}
+		else if (strcmp(msg->command, "WRITE") == 0) {
+		
+		}
+		else if (strcmp(msg->command, "READ") == 0) {
+		
+		}
+		else if (strcmp(msg->command, "CREAT") == 0) {
+		
+		}
+		else if (strcmp(msg->command, "UNLINK") == 0) {
+		
+		}
+		else if (strcmp(msg->command, "SHUTDOWN") == 0) {
+
+		}
+	    }
+    }
+	
+        /*struct sockaddr_in addr;
         char message[BUFFER_SIZE];
         printf("server:: waiting...\n");
         int rc = UDP_Read(sd, &addr, message, BUFFER_SIZE);
@@ -217,9 +260,7 @@ int main(int argc, char *argv[]) {
             sprintf(reply, "goodbye world");
             rc = UDP_Write(sd, &addr, reply, BUFFER_SIZE);
             printf("server:: reply\n");
-        }
-    }
-	
-	return 0;
+        }*/
+    return 0;
 
 }
