@@ -26,9 +26,13 @@ int main(int argc, char *argv[]) {
     rc = UDP_Read(sd, &addrRcv, message, BUFFER_SIZE);
     printf("client:: got reply [size:%d contents:(%s)\n", rc, message);*/
 
-    MFS_Init("localhost", 10000);
-    int rc = MFS_Lookup(0, "WRONG");
-    printf("client:: Lookup results: %d\n", rc);
+    MFS_Init("localhost", 10001);
+    //MFS_Creat(0,0,"TESTING");
+    int rc = MFS_Lookup(0, "TESTING");
+    printf("Lookup result: %d\n",rc);
+    char buffer1[4096];
+    MFS_Read(rc,buffer1,0);
+    printf("client:: Read results: %s\n", buffer1);
     
     return 0;
 }

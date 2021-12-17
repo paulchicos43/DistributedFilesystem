@@ -49,22 +49,23 @@ int MFS_Write(int inum, char *buffer, int block) {
 	strcpy(msg->command, "WRITE");
 	msg->inum = inum;
 	msg->block_offset = block;
-	memcpy(msg->block, &buffer, sizeof(char[MFS_BLOCK_SIZE]));
+	strcpy(msg->block,buffer);
+	//memcpy(msg->block, &buffer, sizeof(char[MFS_BLOCK_SIZE]));
 	Send_Message(msg, resp);
 	
 	return 0;
 }
 
 int MFS_Read(int inum, char *buffer, int block) {
-	message* msg = malloc(sizeof(struct message));
-	response* resp = malloc(sizeof(struct response));
+	struct message* msg = malloc(sizeof(struct message));
+	struct response* resp = malloc(sizeof(struct response));
 
 	strcpy(msg->command, "READ");
 	msg->inum = inum;
 	msg->block_offset = block;
 	Send_Message(msg, resp);
-
-	memcpy(buffer, &resp->block, sizeof(char[MFS_BLOCK_SIZE]));
+	//memcpy(buffer, &resp->block, sizeof(char[MFS_BLOCK_SIZE]));
+	strcpy(buffer,resp->block);
 	
 	return 0;
 }
@@ -116,6 +117,8 @@ int Send_Message(message* msg, response* resp) {
 	char buffer[sizeof(struct response)];
 	UDP_Read(sd, &addrSnd, &buffer[0], sizeof(struct response));
 	printf("client:: response recieved!\n");
-	*resp = *(response*) buffer;
+	//*resp = *(response*) buffer;
+	memcpy(resp,(struct response*) buffer, sizeof(struct response));
+	//printf("HRE %s\n",resp->block);
 	return 0;
 }

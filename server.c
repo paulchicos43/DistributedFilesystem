@@ -213,7 +213,9 @@ int main(int argc, char *argv[]) {
 	    int rc = UDP_Read(sd, &addr, &buffer[0], sizeof(struct message));
 	    printf("server:: message recieved!\n");
 	    if (rc > 0) {
-	        msg = (message*) buffer;
+	        //msg = (message*) buffer;
+		struct message* msg = malloc(sizeof(struct message));
+		memcpy(msg,(struct message*) buffer, sizeof(struct message));
 	        printf("server:: read command: %s\n", msg->command);
 		if (strcmp(msg->command, "LOOKUP") == 0) {
 		    int succ = MFS_Lookup_loc(msg->inum, msg->name);
@@ -228,6 +230,7 @@ int main(int argc, char *argv[]) {
 		    // NEED TO IMPLEMENT STAT	
 		}
 		else if (strcmp(msg->command, "WRITE") == 0) {
+		   printf("HERE: %s\n",msg->block);
 		   int succ = MFS_Write_loc(msg->inum, msg->block, msg->block_offset);
 		   struct response* resp = malloc(sizeof(struct response));
 		   resp->succ = succ; 
@@ -239,7 +242,9 @@ int main(int argc, char *argv[]) {
 		   int succ = MFS_Read_loc(msg->inum, msg->block, msg->block_offset);
 		   struct response* resp = malloc(sizeof(struct response));
 		   resp->succ = succ;
-		   memcpy(resp->block, msg->block, sizeof(char[MFS_BLOCK_SIZE]));
+		   //memcpy(resp->block, msg->block, sizeof(char[MFS_BLOCK_SIZE]));
+		   strcpy(resp->block,msg->block);
+		   //printf("HERE %s\n",resp->block);
 		   UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
 		   printf("server:: READ reply sent\n");
 		   free(resp);
