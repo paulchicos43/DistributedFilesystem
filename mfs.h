@@ -19,6 +19,7 @@ typedef struct __MFS_DirEnt_t {
 } MFS_DirEnt_t;
 
 typedef struct inode {
+    int active; //0 not active, 1 active
     int size;
     int type; // 0 for a directory, 1 for a regular file
     int pointers[14];
