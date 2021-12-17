@@ -85,6 +85,14 @@ int server_init(char *name) {
         return 0;
 }
 
+int MFS_Stat_loc(int inum, MFS_Stat_t *m) {
+	struct inode *in = malloc(sizeof(struct inode));
+	server_read(in,inum * sizeof(struct inode),sizeof(struct inode));
+	m->size = in->size;
+	m->type = in->type;
+	return 0;
+}
+
 int MFS_Lookup_loc(int pinum, char *name) {
 	struct inode *in = malloc(sizeof(struct inode));
 	server_read(in,pinum * sizeof(struct inode),sizeof(struct inode));
@@ -183,6 +191,10 @@ int MFS_Unlink_loc(int pinum, char *name) {
 	return 0;
 }
 
+int MFS_Shutdown_loc() {
+	exit(0);
+}
+
 int main(int argc, char *argv[]) {
 	/*server_init("storage");
 	int fn = MFS_Lookup_loc(0,"testing");
@@ -227,10 +239,15 @@ int main(int argc, char *argv[]) {
 		    free(resp);
 		}
 		else if (strcmp(msg->command, "STAT") == 0) {
-		    // NEED TO IMPLEMENT STAT	
+			int succ = MFS_Stat_loc(msg->inum,&msg->stats);
+			struct response* resp = malloc(sizeof(struct response));
+			resp->succ = succ;
+			resp->stats = resp->stats;
+			UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+			printf("server:: STAT reply sent\n");
+			free(resp);
 		}
 		else if (strcmp(msg->command, "WRITE") == 0) {
-		   printf("HERE: %s\n",msg->block);
 		   int succ = MFS_Write_loc(msg->inum, msg->block, msg->block_offset);
 		   struct response* resp = malloc(sizeof(struct response));
 		   resp->succ = succ; 
@@ -266,7 +283,7 @@ int main(int argc, char *argv[]) {
 		    free(resp);
 		}
 		else if (strcmp(msg->command, "SHUTDOWN") == 0) {
-		    //IMPLEMENT THIS
+		    MFS_Shutdown_loc();
 		}
 	    }
     }
