@@ -94,13 +94,9 @@ int MFS_Lookup_loc(int pinum, char *name) {
 		}
 		MFS_DirEnt_t dir[128];
 		server_read(&dir,in->pointers[i],BLOCK_SIZE);
-		printf("server:: name is \"%s\"\n", name);
 		for(int j = 0; j < 128; j++) {
-			printf("server:: name at index %d is \"%s\"\n", j, dir[j].name);
 			if(strcmp(dir[j].name, name) == 0) {
-				int returninum = dir[j].inum;
-				printf("server:: returninum=%d\n", returninum);
-				return returninum;
+				return dir[j].inum;
 			}
 			if(dir[j].inum == -1) {
 				break;
@@ -211,7 +207,7 @@ int main(int argc, char *argv[]) {
     printf("server:: Server initialized!\n");
     while (1) {
 	    struct sockaddr_in addr;
-	    struct message* msg;
+	    struct message* msg = malloc(sizeof(struct message));
 	    char buffer[sizeof(struct message)];
 	    printf("server:: waiting...\n");
 	    int rc = UDP_Read(sd, &addr, &buffer[0], sizeof(struct message));
@@ -220,32 +216,52 @@ int main(int argc, char *argv[]) {
 	        msg = (message*) buffer;
 	        printf("server:: read command: %s\n", msg->command);
 		if (strcmp(msg->command, "LOOKUP") == 0) {
-		    printf("server:: start of LOOKUP...\n");
 		    int succ = MFS_Lookup_loc(msg->inum, msg->name);
-		    printf("server:: end of LOOKUP...\n");
-		    struct response* resp;
+		    struct response* resp = malloc(sizeof(struct response));
 		    resp->succ = succ;
 		    printf("server:: starting to send reply\n");
-		    rc = UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
-		    printf("server:: LOOKUP replay sent\n");
+		    UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+		    printf("server:: LOOKUP reply sent\n");
+		    free(resp);
 		}
 		else if (strcmp(msg->command, "STAT") == 0) {
-		
+		    // NEED TO IMPLEMENT STAT	
 		}
 		else if (strcmp(msg->command, "WRITE") == 0) {
-		
+		   int succ = MFS_Write_loc(msg->inum, msg->block, msg->block_offset);
+		   struct response* resp = malloc(sizeof(struct response));
+		   resp->succ = succ; 
+		   UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+		   printf("server:: WRITE reply sent\n");
+		   free(resp);
 		}
 		else if (strcmp(msg->command, "READ") == 0) {
-		
+		   int succ = MFS_Read_loc(msg->inum, msg->block, msg->block_offset);
+		   struct response* resp = malloc(sizeof(struct response));
+		   resp->succ = succ;
+		   memcpy(resp->block, msg->block, sizeof(char[MFS_BLOCK_SIZE]));
+		   UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+		   printf("server:: READ reply sent\n");
+		   free(resp);
 		}
 		else if (strcmp(msg->command, "CREAT") == 0) {
-		
+		    int succ = MFS_Creat_loc(msg->inum, msg->type, msg->name);
+	    	    struct response* resp = malloc(sizeof(struct response));
+		    resp->succ = succ;
+		    UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+		    printf("server:: CREAT reply sent\n");
+		    free(resp);	    
 		}
 		else if (strcmp(msg->command, "UNLINK") == 0) {
-		
+		    int succ = MFS_Unlink_loc(msg->inum, msg->name);
+		    struct response* resp = malloc(sizeof(struct response));
+		    resp->succ = succ;
+		    UDP_Write(sd, &addr, (char*) resp, sizeof(struct response));
+		    printf("server:: UNLINK reply sent\n");
+		    free(resp);
 		}
 		else if (strcmp(msg->command, "SHUTDOWN") == 0) {
-
+		    //IMPLEMENT THIS
 		}
 	    }
     }

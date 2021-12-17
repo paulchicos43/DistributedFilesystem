@@ -16,91 +16,90 @@ int MFS_Init(char *hostname, int port) {
 }
 
 int MFS_Lookup(int pinum, char *name) {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "LOOKUP");
-	msg.inum = pinum;
-	strcpy(msg.name, name);
-	printf("client:: msg.name: \"%s\", name: \"%s\"\n", msg.name, name);
-	printf("client:: Sending lookup cmd...\n");
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "LOOKUP");
+	msg->inum = pinum;
+	strcpy(msg->name, name);
+	Send_Message(msg, resp);
+	printf("client:: resp->succ=%d\n", resp->succ);
 
-	return resp.succ;
+	return resp->succ;
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m) {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "STAT");
-	msg.inum = inum;
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "STAT");
+	msg->inum = inum;
+	Send_Message(msg, resp);
 
-	memcpy(m, &resp.stats, sizeof(MFS_Stat_t));
-	m = &resp.stats;
+	memcpy(m, &resp->stats, sizeof(MFS_Stat_t));
+	m = &resp->stats;
 	
 	return 0;
 }
 
 int MFS_Write(int inum, char *buffer, int block) {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "WRITE");
-	msg.inum = inum;
-	msg.block_offset = block;
-	memcpy(msg.block, &buffer, sizeof(char[MFS_BLOCK_SIZE]));
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "WRITE");
+	msg->inum = inum;
+	msg->block_offset = block;
+	memcpy(msg->block, &buffer, sizeof(char[MFS_BLOCK_SIZE]));
+	Send_Message(msg, resp);
 	
 	return 0;
 }
 
 int MFS_Read(int inum, char *buffer, int block) {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "READ");
-	msg.inum = inum;
-	msg.block_offset = block;
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "READ");
+	msg->inum = inum;
+	msg->block_offset = block;
+	Send_Message(msg, resp);
 
-	memcpy(buffer, &resp.block, sizeof(char[MFS_BLOCK_SIZE]));
+	memcpy(buffer, &resp->block, sizeof(char[MFS_BLOCK_SIZE]));
 	
 	return 0;
 }
 
 int MFS_Creat(int pinum, int type, char *name) {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "CREAT");
-	msg.inum = pinum;
-	msg.type = type;
-	strcpy(msg.name, name);
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "CREAT");
+	msg->inum = pinum;
+	msg->type = type;
+	strcpy(msg->name, name);
+	Send_Message(msg, resp);
 
 	return 0;
 }
 
 int MFS_Unlink(int pinum, char *name) {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "UNLINK");
-	msg.inum = pinum;
-	strcpy(msg.name, name);
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "UNLINK");
+	msg->inum = pinum;
+	strcpy(msg->name, name);
+	Send_Message(msg, resp);
 
 	return 0;
 }
 
 int MFS_Shutdown() {
-	message msg;
-	response resp;
+	message* msg = malloc(sizeof(struct message));
+	response* resp = malloc(sizeof(struct response));
 
-	strcpy(msg.command, "SHUTDOWN");
-	Send_Message(&msg, &resp);
+	strcpy(msg->command, "SHUTDOWN");
+	Send_Message(msg, resp);
 
 	return 0;
 }
@@ -117,7 +116,6 @@ int Send_Message(message* msg, response* resp) {
 	char buffer[sizeof(struct response)];
 	UDP_Read(sd, &addrSnd, &buffer[0], sizeof(struct response));
 	printf("client:: response recieved!\n");
-	resp = (response*) buffer;
-	printf("response succes = %d\n", resp->succ);
+	*resp = *(response*) buffer;
 	return 0;
 }
